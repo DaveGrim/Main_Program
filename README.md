@@ -18,6 +18,15 @@ Your program must send a message to the microservice using ZeroMQ in the format:
 ```python
 socket.send_string("substitute:milk")
 ```
+### Connection details
+
+- Protocol: ZeroMQ REQ–REP
+- Address: `tcp://localhost:5556`
+- Socket binding (on microservice): `socket.bind("tcp://*:5556")`
+- Client connection (main program): `socket.connect("tcp://localhost:5556")`
+- Both programs must agree on the same port (5556)
+
+
 ### Receving Data
 
 The microservice will return one of the following:
@@ -42,17 +51,35 @@ except json.JSONDecodeError:
 
 Below is a high-level representation of the communication pattern between your backend and this microservice:
 
-```lua
-+---------------+          +-------------------------------+
-| Your Backend  |          | Ingredient Substitute Service |
-+---------------+          +-------------------------------+
-       |                              |
-       |  send_string("substitute:X") |
-       |----------------------------->|
-       |                              |
-       |       look up substitute     |
-       |                              |
-       |         send_json([...])     |
-       |<-----------------------------|
-       |                              |
+```sql
++-----------------+         +------------------------------+         +---------------------------+
+| Recipe Manager  |         | Ingredient Sub Microservice |         | Substitute Dictionary/API |
++-----------------+         +------------------------------+         +---------------------------+
+        |                                |                                  |
+        |  send_string("substitute:milk")|                                  |
+        |------------------------------->|                                  |
+        |                                |                                  |
+        |                                |  lookup("milk")                  |  If substitute is found, send string of
+        |                                |--------------------------------> |   replacement ingridients
+        |                                |                                  |
+        |                                |                                  |
+        |                                |  return ["almond milk", ...]     |
+        |                                |<-------------------------------  |
+        |                                |                                  |
+        |  send_json(["almond milk", "oat milk", "soy milk"])               |
+        |<-------------------------------|                                  |
+        |                                |                                  |
+
+      OR if no match is found:
+
+        |  send_string("substitute:xyz")|                                     |
+        |------------------------------->|                                     
+        |                                |  lookup("xyz")                     |
+        |                                |----------------------------------->|  If no substitute ingridients found
+        |                                |                                    |   return string of "No substitute found"
+        |                                |  return null                       |
+        |                                |<---------------------------------- |
+        |                                |  send_string("No substitute found")|
+        |<-------------------------------|                                    |
+
 ```
